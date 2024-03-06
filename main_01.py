@@ -1,12 +1,11 @@
 from flask import Flask, redirect, render_template
-from flask_login import LoginManager, login_user
-import sys
-
-sys.path.append('..')
+from flask_login import LoginManager, login_required, login_user, logout_user
 
 from data import db_session
 from data.users import User
+from data.jobs import Job
 from forms.login import LoginForm
+from forms.jobs import JobForm
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'super_secret_key'
@@ -14,7 +13,6 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 
 db_session.global_init("db/database.db")
-# session = db_session.create_session()
 
 
 @login_manager.user_loader
@@ -43,21 +41,34 @@ def login():
     return render_template('login.html', title='Авторизация', form=form)
 
 
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect("/")
+
+
+@app.route('/job_add', methods=['GET', 'POST'])
+@login_required
+def add_job():
+    form = JobForm()
+    if form.validate_on_submit():
+        db_sess = db_session.create_session()
+        job = Job()
+        job.team_leader = form.team_leader.data
+        job.job = form.job.data
+        job.work_size = form.work_size.data
+        job.collaborators = form.collaborators.data
+        job.is_finished = form.is_finished.data
+        db_sess.add(job)
+        db_sess.commit()
+        return redirect('/')
+    return render_template('jobs.html', title='Добавление работы', form=form)
+
+
 def main():
     app.run(port=8080, host='127.0.0.1')
 
 
 if __name__ == '__main__':
     main()
-
-    # user = User()
-    # user.surname = "Scott"
-    # user.name = "Ridley"
-    # user.age = 21
-    # user.position = "captain"
-    # user.speciality = "research engineer"
-    # user.address = "module_1"
-    # user.email = "scott_chief@mars.org"
-    # user.hashed_password = "cap"
-    # session.add(user)
-    # session.commit()
